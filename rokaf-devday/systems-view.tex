@@ -1,0 +1,30 @@
+\begin{frame}{Systems View on Deep Learning Models}
+\framesubtitle{딥러닝 모델도 프로그램이다}
+
+\begin{itemize}
+  \item CNN, RNN, Transformer 등 딥러닝 모델의 구조는 다양한 종류가 있습니다.
+  \item 딥러닝 모델은 다양한 구조를 가지지만, 중요한 특성을 공유합니다.
+  \begin{itemize}
+    \item \textbf{텐서 연산}으로 이루어져 있습니다.
+    \item 전체적인 control flow가 대부분 한 방향만을 따라갑니다.
+  \end{itemize}
+  \pause
+  \item 텐서: \only<2>{\(T: \underbrace{V^* \times \dots \times V^*}_{p\; \text{times}} \times \underbrace{V \times \dots \times V}_{q\; \text{times}} \to \mathbb{R}\) where \(V\) is a vector space ...}\only<3->{다차원 배열}
+\end{itemize}
+\only<4->{
+\begin{figure}
+  \centering
+  \begin{subfigure}[c]{0.2\textwidth}
+    {\resizebox{\linewidth}{!}{\input{tensor-ops/matmul}}}
+  \end{subfigure}%
+  \begin{subfigure}[c]{0.3\textwidth}
+    {\resizebox{\linewidth}{!}{\input{tensor-ops/elementwise}}}
+  \end{subfigure}%
+  \begin{subfigure}[c]{0.25\textwidth}
+    {\resizebox{\linewidth}{!}{\input{tensor-ops/reduction}}}
+  \end{subfigure}%
+  \begin{subfigure}[c]{0.175\textwidth}
+    {\resizebox{\linewidth}{!}{\input{tensor-ops/reshape}}}
+  \end{subfigure}
+\end{figure}}
+\end{frame}

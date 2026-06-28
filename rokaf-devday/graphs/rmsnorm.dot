@@ -1,0 +1,29 @@
+digraph RMSNorm {
+    rankdir="LR";
+    
+    emul1 [label="*"];
+    div1 [label="/"];
+    epsilon [label="ϵ",shape=square];
+    n [label="n",shape=square];
+    x -> emul1;
+    x -> emul1;
+    emul1 -> sum;
+    sum -> div1;
+    n -> div1;
+    div1 -> plus;
+    epsilon -> plus;
+    plus -> sqrt;
+    
+    emul2 [label="*"];
+    div2 [label="/"];
+    x -> emul2;
+    w -> emul2;
+    emul2 -> div2;
+    sqrt -> div2;
+    
+    div2 -> out;
+    
+    x [shape=square];
+    w [shape=square];
+    out [shape=square];
+}

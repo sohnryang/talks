@@ -1,0 +1,45 @@
+\definecolor{cA}{RGB}{66,133,244}
+\definecolor{cC}{RGB}{52,168,83}
+\definecolor{cGray}{RGB}{120,120,120}
+
+\begin{tikzpicture}[
+  font=\small,
+  lbl/.style={font=\footnotesize\itshape},
+  op/.style={font=\large},
+]
+  % Grids+arrow: A grid [0,1.6] (4x4), arrow, y grid [3.3,3.7] (1x4)
+  % cell = 0.4. A: 4 cols x 4 rows. y: 1 col x 4 rows.
+  \def\cx{1.9}
+ 
+  % ===== Diagram =====
+  % A: 4x4 grid, x 0..2.12, y 0..2.12, cell 0.53
+  \begin{scope}[shift={(0.0,0.0)}]
+    \draw[fill=cA!25,draw=cA] (0,0) rectangle (2.12,2.12);
+    \draw[fill=cA!70,draw=cA] (0,1.06) rectangle (2.12,1.59);       % highlighted row
+    \foreach \k in {0.53,1.06,1.59}{\draw[cA!60] (\k,0)--(\k,2.12);}
+    \foreach \k in {0.53,1.06,1.59}{\draw[cA!60] (0,\k)--(2.12,\k);}
+    \draw[cA] (0,0) rectangle (2.12,2.12);
+  \end{scope}
+  \node[lbl] at (1.06,-0.35) {$A \in \mathbb{R}^{M \times N}$};
+ 
+  \draw[-{Latex},cGray,thick] (2.52,1.06) -- (3.42,1.06)
+        node[midway,above,font=\footnotesize]{$\bigoplus_j$};
+ 
+  % y: 4x1 grid, x 3.82..4.35, y 0..2.12
+  \begin{scope}[shift={(3.82,0.0)}]
+    \draw[fill=cC!25,draw=cC] (0,0) rectangle (0.53,2.12);
+    \draw[fill=cC!80,draw=cC] (0,1.06) rectangle (0.53,1.59);       % highlighted entry
+    \foreach \k in {0.53,1.06,1.59}{\draw[cC!60] (0,\k)--(0.53,\k);}
+    \draw[cC] (0,0) rectangle (0.53,2.12);
+  \end{scope}
+  \node[lbl] at (4.085,-0.35) {$y \in \mathbb{R}^{M}$};
+ 
+  % ===== Title & formula on grids+arrow center =====
+  \node[op]            at (2.175, 3.05) {Reduction};
+  \node[font=\footnotesize] at (2.175, 2.55) {$y_i=\textstyle\bigoplus_j A_{ij}$ (sum/max/\ldots)};
+ 
+  % ===== Equal height + equal top/bottom padding (side-by-side) =====
+  \coordinate (Lx) at (current bounding box.west);
+  \coordinate (Rx) at (current bounding box.east);
+  \useasboundingbox (Lx |- 0,-0.6588) rectangle (Rx |- 0,3.3563);
+\end{tikzpicture}

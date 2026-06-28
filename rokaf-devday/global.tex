@@ -1,0 +1,58 @@
+\begin{frame}{Global Optimization}
+\framesubtitle{Defining the Search Space}
+
+\begin{itemize}
+  \item Operator fusion 탐색 공간은 매우 방대합니다.
+  \begin{itemize}
+    \item 탐색 공간이 계산 그래프의 연산자 개수에 대해 지수적으로 늘어납니다.
+    \item ``무식하게'' 탐색하면 \only<1>{전역하기 전까지 답을 못 구할수도 있습니다.}\only<2->{지구가 멸망하기 전까지 답을 못 구할수도 있습니다.}
+  \end{itemize}
+\end{itemize}
+
+\pause
+\begin{tcolorbox}[title={탐색 공간의 정의}]
+  효율적으로 탐색하되 최적에 가까운 답을 구할 수 있도록 공간을 정의해야 합니다.
+\end{tcolorbox}
+
+\pause
+\begin{itemize}
+  \item 탐색 공간 정의도 operator fusion에서 중요하기 때문에 다양한 연구가 있습니다.
+  \item Optimal Kernel Orchestration for Tensor Programs with Korch (ASPLOS '24)
+  \begin{itemize}
+    \item 간단한 operator fusion 외의 다양한 패턴도 효율적으로 탐색할 수 있습니다.
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Global Optimization}
+\framesubtitle{Taming the Search Space}
+
+\begin{itemize}
+  \item \(N\)개 연산자가 있을 때 동시에 실행할 수 있는 그룹은 \(2^N\)개입니다.
+  \begin{itemize}
+    \item 각 연산자마다 동시에 실행할 그룹에 있음/없음 2가지 경우가 가능하기 때문입니다.
+  \end{itemize}
+  \pause
+  \item 이 \(2^N\)개 모두를 고려할 필요는 없다는 사실에 주목해야 합니다.
+\end{itemize}
+\pause
+\begin{figure}
+  \centering
+  \includegraphviz[width=0.8\linewidth]{graphs/bad-fusion}
+\end{figure}
+\begin{itemize}
+  \item Korch에서는 의미 있는 경우만 탐색하기 위해 convex subgraph를 사용합니다.
+  \begin{itemize}
+    \item Convex subgraph만을 고려하면 개수가 \(2^N\)개에서 \(N^2\)개에 가깝게 줄어듭니다.
+    \item 이 후보들 중 BLP(Binary Linear Programming)을 통해 실행할 그룹을 결정합니다.
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Global Optimization}
+\framesubtitle{Taming the Search Space}
+
+\begin{tcolorbox}[title={Convex subgraph의 정의}]
+  그래프 \(G = (V, E)\)에 대해, 노드 집합 \(V\,'\subset V\)는 모든 노드 쌍 \(v_1, v_2 \in V\,'\)에 대해 \((v_1, u), (u, v_2) \in E\)인 \(u \in V \setminus V\,'\)이 존재하지 않을 때 \(G\)의 convex subgraph를 형성합니다.
+\end{tcolorbox}
+\end{frame}

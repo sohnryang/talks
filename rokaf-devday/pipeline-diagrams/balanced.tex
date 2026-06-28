@@ -1,0 +1,40 @@
+\documentclass[border=12pt]{standalone}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\begin{document}
+% definitions in the body so the figure is \includestandalone-safe
+\definecolor{memfill}{HTML}{BFD7F2}%
+\definecolor{memdraw}{HTML}{2563EB}%
+\definecolor{compfill}{HTML}{FFD9A8}%
+\definecolor{compdraw}{HTML}{D97706}%
+
+\begin{tikzpicture}[x=0.62cm, font=\sffamily, lbl/.style={font=\sffamily\small}]
+\def\bh{0.34}\def\Mw{2.0}\def\Cw{2.0} % Mem = Comp -> perfectly balanced
+
+% Both units saturated: bars tile with no bubbles; Comp_k overlaps Mem_{k+1} exactly.
+% step / Mem-start / Comp-start / y-center
+\foreach \k/\ls/\cs/\yc in {1/0/2/3.85, 2/2/4/2.95, 3/4/6/2.05, 4/6/8/1.15} {
+    \node[lbl, anchor=east] at (-0.4,\yc) {Step \k};
+    \draw[gray!25, line width=0.4pt] (0,\yc) -- (10.2,\yc);
+    % Mem (blue)
+    \fill[memfill] (\ls,\yc-\bh) rectangle (\ls+\Mw,\yc+\bh);
+    \node[lbl, memdraw!60!black] at (\ls+\Mw/2,\yc) {Mem};
+    % Comp (orange)
+    \fill[compfill] (\cs,\yc-\bh) rectangle (\cs+\Cw,\yc+\bh);
+    \node[lbl, font=\sffamily\footnotesize, compdraw!50!black] at (\cs+\Cw/2,\yc) {Comp};
+}
+
+% time axis + ticks at the compute boundaries
+\draw[-{Stealth[length=6pt]}, line width=0.8pt] (0,0.3) -- (10.6,0.3);
+\foreach \t in {0,2,4,6,8} { \draw[line width=0.6pt] (\t,0.22) -- (\t,0.38); }
+\node[lbl, anchor=west] at (10.7,0.3) {Time};
+
+% dashed lines drawn last (on top of all bars). First line marks the start of the
+% first compute (x=2 -> Comp1); the rest sit at each Comp-end and connect up to the
+% finishing corner of the PREVIOUS step's Comp bar.
+\foreach \xf/\ycp in {2/3.85, 4/3.85, 6/2.95, 8/2.05} {
+    \draw[densely dashed, gray!55, line width=0.5pt] (\xf,0.3) -- (\xf,\ycp-\bh);
+}
+
+\end{tikzpicture}
+\end{document}

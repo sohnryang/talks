@@ -1,0 +1,15 @@
+\documentclass[tikz,border=4pt]{standalone}
+\input{tikzcommon}
+\begin{document}
+\begin{tikzpicture}
+  \CanvasBB
+  \haloSGzero{0.30}{1}
+  \tilefill{top}{sgA}
+  \StaticScene
+  \activeborder{bot}{sgA}
+  \sinkring{2.3}{5.3}{sgA}
+  \tilemark{$T_2$}
+  \memtext{$T_2$:t,\; $A$:b}{$A$}
+  \pipe{5.32}
+\end{tikzpicture}
+\end{document}

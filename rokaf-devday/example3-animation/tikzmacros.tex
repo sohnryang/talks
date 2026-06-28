@@ -1,0 +1,136 @@
+% ----- Colours / styles / drawing macros ONLY (no \usepackage).
+% Safe to \input inside a group in the document body, so the names stay scoped.
+% ======================================================================
+%  tikzcommon.tex  --  Example 3 / Strategy B, software-pipelined view.
+%  Each tile interval overlaps load(next) and store(prev) on the single
+%  memory channel with compute, so interval = max(load+store, compute).
+%  A Gantt strip at the bottom shows the staggering.  Every common element
+%  is defined here once -> byte-identical across frames (no \only<> jitter).
+% ======================================================================
+
+\newcommand{\CanvasW}{16}
+\newcommand{\CanvasH}{9}
+\newcommand{\CanvasBB}{\useasboundingbox (-0.35,2.20) rectangle (12.7,7.7);}
+
+% ---- palette ----------------------------------------------------------
+\definecolor{ink}{RGB}{34,34,40}
+\definecolor{sgA}{RGB}{37,99,235}     % subgraph 0 / compute A,B (blue)
+\definecolor{sgB}{RGB}{234,88,12}     % subgraph 1 / compute C,D (orange)
+\definecolor{resG}{RGB}{22,163,74}    % resident / retained (green)
+\definecolor{inB}{RGB}{59,130,246}    % load  (blue)
+\definecolor{outO}{RGB}{217,70,12}    % store (orange)
+\definecolor{play}{RGB}{222,30,30}    % playhead cursor (red)
+\definecolor{panel}{RGB}{205,208,214}
+\definecolor{soft}{RGB}{246,247,249}
+\definecolor{ttl}{RGB}{20,20,26}
+
+\tikzset{
+  opnode/.style ={circle,draw=ink,line width=0.9pt,fill=soft,
+                  minimum size=0.82cm,inner sep=0pt,font=\small\bfseries},
+  ionode/.style ={rectangle,draw=ink,line width=0.9pt,
+                  fill=soft,minimum size=0.76cm,inner sep=1pt,font=\small\bfseries},
+  tedge/.style  ={-{Latex[length=2.0mm]},draw=ink!75,line width=0.9pt},
+  tlab/.style   ={font=\scriptsize,text=ink!65,inner sep=1pt},
+  outframe/.style={draw=panel,line width=1pt},
+}
+
+% ---- output-map cells (map (7.4,5.4)-(9.1,7.1), split y=6.25) ---------
+\newcommand{\tilefill}[2]{%
+  \ifthenelse{\equal{#1}{top}}{\fill[#2!35] (7.4,6.25) rectangle (9.1,7.1);}{}%
+  \ifthenelse{\equal{#1}{bot}}{\fill[#2!35] (7.4,5.4)  rectangle (9.1,6.25);}{}%
+  \ifthenelse{\equal{#1}{both}}{\fill[#2!28] (7.4,5.4) rectangle (9.1,7.1);}{}%
+}
+\newcommand{\activeborder}[2]{%
+  \ifthenelse{\equal{#1}{top}}%
+    {\draw[#2,dash pattern=on 2.5pt off 2pt,line width=1.2pt] (7.46,6.31) rectangle (9.04,7.04);}{}%
+  \ifthenelse{\equal{#1}{bot}}%
+    {\draw[#2,dash pattern=on 2.5pt off 2pt,line width=1.2pt] (7.46,5.46) rectangle (9.04,6.19);}{}%
+}
+
+% ---- subgraph halos ---------------------------------------------------
+% op1 (2.3,5.3) -- op2 (3.7,6.7): 45-deg axis, midpoint (3.0,6.0).
+% Rectangle is centred on the midpoint then rotated about it, so it hugs
+% exactly the two nodes (half-length 1.58 along axis, half-width 0.59).
+\newcommand{\haloSGzero}[2]{%
+  \begin{scope}[opacity=#1]
+    \begin{scope}[rotate around={45:(3.0,6.0)}]
+      \fill[sgA!30] (1.42,5.41) rectangle (4.58,6.59);
+    \end{scope}
+  \end{scope}
+  \ifnum#2=1\node[font=\scriptsize\bfseries,text=sgA] at (1.95,6.98){Subgraph 0};\fi}
+\newcommand{\haloSGone}[2]{%
+  \begin{scope}[opacity=#1]\fill[sgB!35] (1.78,4.74) rectangle (5.30,5.86);\end{scope}
+  \ifnum#2=1\node[font=\scriptsize\bfseries,text=sgB] at (4.55,4.55){Subgraph 1};\fi}
+
+\newcommand{\sinkring}[3]{\draw[line width=1.7pt,#3] (#1,#2) circle (0.52);}
+\newcommand{\recomputeTag}{%
+  \node[font=\scriptsize,text=sgB] at (2.3,4.40){$\circlearrowleft$ recompute op1};
+  \draw[sgB,-{Latex[length=1.6mm]},line width=0.8pt] (2.3,4.57)--(2.3,4.80);}
+
+\newcommand{\tilemark}[1]{% #1 = formatted tensor label, e.g. $T_2$ or out
+  \node[font=\scriptsize,text=ink] at (8.25,6.675){#1:t};
+  \node[font=\scriptsize,text=ink] at (8.25,5.825){#1:b};}
+\newcommand{\memtext}[2]{%
+  \node[anchor=north west,font=\scriptsize,text=ink] at (7.4,5.18){\textbf{Fast memory:}\; #1};
+  \node[anchor=north west,font=\scriptsize,text=ink] at (7.4,4.80){\textbf{Slow memory:}\; #2};}
+
+% ======================================================================
+%  Pipeline Gantt strip.  \pipe{active}  active: -1 init, 0..5 cols, 6 done
+%  columns: 0 fill(ld A) | 1 K_A(ld B) | 2 K_B(ld C) | 3 K_C(ld D)
+%           | 4 K_D(st C) | 5 drain(st D)
+% ======================================================================
+\newcommand{\pipe}[1]{% #1 = playhead x (time). <1.5 hides bar/fades all; >12.3 all solid.
+  \node[font=\scriptsize\bfseries,text=ink!80,anchor=east] at (1.40,3.70){Compute};
+  \node[font=\scriptsize\bfseries,text=ink!80,anchor=east] at (1.40,2.85){Memory};
+  \foreach \gx in {3.3,5.1,6.9,8.7,10.5}{%
+    \draw[black!16,line width=0.4pt,dash pattern=on 1.6pt off 1.6pt] (\gx,2.51)--(\gx,4.04);}
+  % MEMORY channel (packed, bottleneck)
+  \foreach \xL/\xR/\ml/\mc in {%
+      1.5/3.3/{ld $A$:t}/inB, 3.3/5.1/{ld $A$:b}/inB,
+      5.1/6.9/{ld $A$:t}/inB, 6.9/8.7/{ld $A$:b}/inB,
+      8.7/10.5/{st out:t}/outO, 10.5/12.3/{st out:b}/outO}{%
+    \pgfmathparse{\xL>#1 ? 0.18 : 1.0}\edef\om{\pgfmathresult}%
+    \begin{scope}[opacity=\om]
+      \fill[\mc!18] (\xL,2.55) rectangle (\xR,3.15);
+      \draw[\mc,line width=0.7pt] (\xL,2.55) rectangle (\xR,3.15);
+      \node[font=\tiny,text=ink] at ({(\xL+\xR)/2},2.85){\ml};
+    \end{scope}}%
+  % COMPUTE op steps: each tile after its load lands
+  \foreach \xL/\opa/\opb/\cc in {%
+      3.3/op1/op2/sgA, 5.1/op1/op2/sgA, 6.9/op1/op3/sgB, 8.7/op1/op3/sgB}{%
+    \pgfmathparse{\xL>#1 ? 0.18 : 1.0}\edef\oA{\pgfmathresult}%
+    \begin{scope}[opacity=\oA]
+      \fill[\cc!22] (\xL,3.40) rectangle ({\xL+0.439},4.00);
+      \draw[\cc,line width=0.7pt] (\xL,3.40) rectangle ({\xL+0.439},4.00);
+      \node[font=\tiny,text=ink] at ({\xL+0.22},3.70){\opa};
+    \end{scope}
+    \pgfmathparse{(\xL+0.439)>#1 ? 0.18 : 1.0}\edef\oB{\pgfmathresult}%
+    \begin{scope}[opacity=\oB]
+      \fill[\cc!22] ({\xL+0.439},3.40) rectangle ({\xL+0.878},4.00);
+      \draw[\cc,line width=0.7pt] ({\xL+0.439},3.40) rectangle ({\xL+0.878},4.00);
+      \node[font=\tiny,text=ink] at ({\xL+0.659},3.70){\opb};
+    \end{scope}}%
+  % PLAYHEAD: vertical cursor at current time
+  \pgfmathparse{(#1>=1.5)&&(#1<=12.3) ? 1 : 0}\edef\showbar{\pgfmathresult}%
+  \ifdim\showbar pt>0.5pt
+    \draw[play,line width=0.6pt,dash pattern=on 2.4pt off 1.8pt] (#1,2.40)--(#1,4.15);
+  \fi
+}
+
+% ======================================================================
+\newcommand{\StaticScene}{%
+  % graph
+  \node[ionode] (A)   at (1.0,5.3){$A$};
+  \node[opnode] (op1) at (2.3,5.3){op1};
+  \node[opnode] (op2) at (3.7,6.7){op2};
+  \node[opnode] (op3) at (4.7,5.3){op3};
+  \node[ionode] (out) at (6.0,5.3){out};
+  \draw[tedge] (A)--(op1); \draw[tedge] (op1)--(op2);
+  \draw[tedge] (op1)--(op3); \draw[tedge] (op2)--(op3); \draw[tedge] (op3)--(out);
+  \node[tlab] at (2.78,6.05){$T_1$};
+  \node[tlab] at (3.50,5.08){$T_1$};
+  \node[tlab] at (4.42,6.05){$T_2$};
+  % output map
+  \draw[outframe] (7.4,5.4) rectangle (9.1,7.1);
+  \draw[panel,line width=1pt] (7.4,6.25)--(9.1,6.25);
+}

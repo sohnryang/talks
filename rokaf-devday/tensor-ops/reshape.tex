@@ -1,0 +1,41 @@
+\definecolor{cA}{RGB}{66,133,244}
+\definecolor{cC}{RGB}{52,168,83}
+\definecolor{cGray}{RGB}{120,120,120}
+
+\begin{tikzpicture}[
+  font=\small,
+  lbl/.style={font=\footnotesize\itshape},
+  op/.style={font=\large},
+]
+  % Common vertical center axis
+  \def\cx{2.7}
+ 
+  % ===== Title & caption =====
+  \node[op]            at (\cx, 2.90) {Reshape};
+  \node[font=\footnotesize] at (\cx, 2.40) {same data, new shape};
+ 
+  % source 2x6: 6 cols (width 2.52, center offset 1.05) -> shift_x = cx-1.05
+  \begin{scope}[shift={(\cx-1.05,1.85)}]
+    \foreach \r in {0,1}{
+      \foreach \c in {0,...,5}{
+        \pgfmathtruncatemacro{\val}{\r*6+\c+1}
+        \node[draw=cA,fill=cA!20,minimum size=0.42cm,inner sep=0pt,font=\tiny]
+          at (\c*0.42,-\r*0.42) {\val};}}
+  \end{scope}
+ 
+  % arrow (vertical, centered on cx, equal gaps to both grids)
+  \draw[-{Latex},cGray,thick] (\cx,1.06) -- (\cx,0.70);
+ 
+  % target 3x4: 4 cols (width 1.68, center offset 0.63) -> shift_x = cx-0.63
+  \begin{scope}[shift={(\cx-0.63,0.35)}]
+    \foreach \r in {0,1,2}{
+      \foreach \c in {0,...,3}{
+        \pgfmathtruncatemacro{\val}{\r*4+\c+1}
+        \node[draw=cC,fill=cC!20,minimum size=0.42cm,inner sep=0pt,font=\tiny]
+          at (\c*0.42,-\r*0.42) {\val};}}
+  \end{scope}
+  %% ===== Normalize height for side-by-side placement =====
+  \coordinate (Lx) at (current bounding box.west);
+  \coordinate (Rx) at (current bounding box.east);
+  \useasboundingbox (Lx |- 0,-1.2273) rectangle (Rx |- 0,3.7249);
+\end{tikzpicture}

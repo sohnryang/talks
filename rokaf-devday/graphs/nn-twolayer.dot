@@ -1,0 +1,20 @@
+digraph matmul_relu {
+    rankdir = "LR";
+    
+    W1 [shape=square,label=<W<FONT POINT-SIZE="10"><SUB>1</SUB></FONT>>];
+    W2 [shape=square,label=<W<FONT POINT-SIZE="10"><SUB>2</SUB></FONT>>];
+    X [shape=square];
+    out [shape=square];
+    matmul1 [label="matmul"];
+    matmul2 [label="matmul"];
+    relu1 [label="relu"];
+    relu2 [label="relu"];
+    W1 -> matmul1;
+    X -> matmul1;
+    matmul1 -> relu1;
+    
+    W2 -> matmul2;
+    relu1 -> matmul2;
+    matmul2 -> relu2;
+    relu2 -> out;
+}

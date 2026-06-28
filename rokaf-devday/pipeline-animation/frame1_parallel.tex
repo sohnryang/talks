@@ -1,0 +1,95 @@
+\documentclass[border=12pt]{standalone}
+%% For STANDALONE compilation these packages are used from this preamble.
+%% For \includestandalone, the MAIN document's preamble must provide:
+%%   \usepackage{tikz}\usetikzlibrary{arrows.meta}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\begin{document}
+%% --- all definitions live in the BODY so \includestandalone picks them up ---
+%% (standalone's include mode ignores the sub-file PREAMBLE; only the body is used)
+\definecolor{memfill}{HTML}{BFD7F2}%
+\definecolor{memdraw}{HTML}{2563EB}%
+\definecolor{compfill}{HTML}{FFD9A8}%
+\definecolor{compdraw}{HTML}{D97706}%
+\definecolor{graytile}{HTML}{DBDBDB}%
+\definecolor{nowcol}{HTML}{D33A3A}%
+\def\Tw{1.45}\def\Th{0.9}%
+\def\NN{1}%% frame number (1..8)
+\pgfmathsetmacro{\T}{{1.25,3.25,4.5,5.75,7,8.25,9.5,10.75}[\NN-1]}%
+\providecommand{\drawtile}[3]{%
+  \pgfmathsetmacro{\ms}{(#1-1)*2.5}%
+  \pgfmathsetmacro{\me}{#1*2.5}%
+  \pgfmathsetmacro{\ce}{#1*2.5+1.5}%
+  \ifdim\T pt<\ms pt \fill[white]    (#2,#3) rectangle ++(\Tw,\Th);%
+  \else\ifdim\T pt<\me pt \fill[memfill]  (#2,#3) rectangle ++(\Tw,\Th);%
+  \else\ifdim\T pt<\ce pt \fill[compfill] (#2,#3) rectangle ++(\Tw,\Th);%
+  \else \fill[graytile] (#2,#3) rectangle ++(\Tw,\Th);%
+  \fi\fi\fi
+  \draw[gray!55, line width=0.6pt] (#2,#3) rectangle ++(\Tw,\Th);%
+}%
+\begin{tikzpicture}[
+    x=0.62cm,
+    font=\sffamily,
+    lbl/.style={font=\sffamily\small}
+]
+\def\bh{0.34}
+
+% fixed bounding box so every frame is the same size
+\useasboundingbox (-2.6,-0.5) rectangle (17.4,4.5);
+
+% ===================== LEFT: pipeline with a moving time cursor =====================
+\foreach \j in {1,...,4} {
+    \pgfmathsetmacro{\ls}{(\j-1)*2.5}   % Mem start
+    \pgfmathsetmacro{\me}{\j*2.5}        % Mem end = Comp start
+    \pgfmathsetmacro{\ce}{\j*2.5+1.5}    % Comp end
+    \pgfmathsetmacro{\yc}{3.85-(\j-1)*0.9}
+    \node[lbl, anchor=east] at (-0.4,\yc) {Step \j};
+    \draw[gray!25, line width=0.4pt] (0,\yc) -- (11.7,\yc);
+    % --- Mem bar: drawn once started; blue while running, gray once finished ---
+    \ifdim\T pt<\ls pt\relax % not started yet -> nothing
+    \else
+        \ifdim\T pt<\me pt\relax % running
+            \fill[memfill] (\ls,\yc-\bh) rectangle (\ls+2.5,\yc+\bh);
+            \node[lbl, memdraw!60!black] at (\ls+1.25,\yc) {Mem};
+        \else % finished
+            \fill[graytile] (\ls,\yc-\bh) rectangle (\ls+2.5,\yc+\bh);
+            \node[lbl, gray!55!black] at (\ls+1.25,\yc) {Mem};
+        \fi
+        \draw[densely dashed, gray!55, line width=0.5pt] (\ls,0.3) -- (\ls,\yc-\bh);
+        \draw[densely dashed, gray!55, line width=0.5pt] (\ls+2.5,0.3) -- (\ls+2.5,\yc-\bh);
+    \fi
+    % --- Comp bar: starts at Mem end; orange while running, gray once finished ---
+    \ifdim\T pt<\me pt\relax % not started yet -> nothing
+    \else
+        \ifdim\T pt<\ce pt\relax % running
+            \fill[compfill] (\me,\yc-\bh) rectangle (\me+1.5,\yc+\bh);
+            \node[lbl, font=\sffamily\footnotesize, compdraw!50!black] at (\me+0.75,\yc) {Comp};
+        \else % finished
+            \fill[graytile] (\me,\yc-\bh) rectangle (\me+1.5,\yc+\bh);
+            \node[lbl, font=\sffamily\footnotesize, gray!55!black] at (\me+0.75,\yc) {Comp};
+        \fi
+    \fi
+}
+
+% time axis (fixed length + ticks in every frame)
+\draw[-{Stealth[length=6pt]}, line width=0.8pt] (0,0.3) -- (12.0,0.3);
+\foreach \t in {0,2.5,5,7.5,10} {
+    \draw[line width=0.6pt] (\t,0.22) -- (\t,0.38);
+}
+\node[lbl, anchor=west] at (12.1,0.3) {Time};
+
+% ---- moving time cursor: bars it crosses are running in parallel ----
+\draw[nowcol, densely dashed, line width=0.6pt] (\T,0.3) -- (\T,4.25);
+\node[lbl, nowcol, anchor=north] at (\T,0.12) {now};
+
+% ===================== RIGHT: 2x2 tensor tiles =====================
+\node[lbl] at (15.45,3.68) {Tensor};
+% step 1=top-left, 2=top-right, 3=bottom-left, 4=bottom-right (raster order)
+\drawtile{1}{14}{2.5}
+\drawtile{2}{15.45}{2.5}
+\drawtile{3}{14}{1.6}
+\drawtile{4}{15.45}{1.6}
+\draw[gray!70, line width=0.9pt] (14,1.6) rectangle (16.9,3.4);
+
+\end{tikzpicture}
+\end{document}

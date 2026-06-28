@@ -1,0 +1,29 @@
+digraph attn {
+    rankdir = "LR";
+
+    Q [shape=square];
+    K [shape=square];
+    V [shape=square];
+    d [label=<d<FONT POINT-SIZE="10"><SUB>k</SUB></FONT>>,shape=square];
+    matmul_QKT [label="matmul"];
+    div [label="/"];
+    Q -> matmul_QKT;
+    K -> transpose;
+    transpose -> matmul_QKT;
+    matmul_QKT -> div;
+    d -> sqrt;
+    sqrt -> div;
+    
+    div2 [label="/"];
+    div -> exp;
+    exp -> rowsum;
+    exp -> div2;
+    rowsum -> div2;
+    
+    matmul_V [label="matmul"];
+    div2 -> matmul_V;
+    V -> matmul_V;
+    
+    out [shape=square];
+    matmul_V -> out;
+}

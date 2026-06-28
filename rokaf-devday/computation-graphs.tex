@@ -1,0 +1,58 @@
+\begin{frame}{Computation Graphs}
+\framesubtitle{Example: Gemma 4 Decoder Block}
+
+\begin{figure}
+  \centering
+  \resizebox{0.85\textwidth}{!}{%
+    \rotatebox{90}{%
+      \only<1>{\input{gemma4-decoder/gemma4-decoder}}%
+      \only<2>{\input{gemma4-decoder/gemma4-decoder-rmsnorm-highlighted}}%
+    }
+  }
+  \caption{Gemma 4 Decoder Block}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Computation Graphs}
+\framesubtitle{RMSNorm}
+
+RMSNorm의 정의는 다음과 같습니다.
+\[
+  [\mathrm{RMSNorm}(x)]_i = \frac{x_i w_i}{\sqrt{\mathrm{mean}(x^2) + \epsilon}}
+\]
+\pause
+입력 텐서는 \(x\), \(w\), \(\epsilon\), \(n\)이고, 텐서 연산자와 입력, 출력은 다음과 같이 연결됩니다.
+\begin{figure}
+  \centering
+  \includegraphviz[width=0.9\textwidth]{graphs/rmsnorm}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Computation Graphs}
+\framesubtitle{Example: Gemma 4 Decoder Block}
+
+\begin{figure}
+  \centering
+  \resizebox{0.85\textwidth}{!}{%
+    \rotatebox{90}{%
+      \input{gemma4-decoder/gemma4-decoder-attention}%
+    }
+  }
+  \caption{Gemma 4 Decoder Block}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Computation Graphs}
+\framesubtitle{Attention}
+Attenton의 정의는 다음과 같습니다.
+\begin{align*}
+  \mathrm{Attention}(Q, K, V) = \mathrm{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right) V, \quad
+  [\mathrm{softmax}(x)]_i = \frac{\exp{(x_i)}}{\sum_i \exp{(x_i)}}
+\end{align*}
+\pause
+입력 텐서는 \(Q\), \(K\), \(V\), \(d_k\)이고, 계산 그래프는 다음과 같습니다.
+\begin{figure}
+  \centering
+  \includegraphviz[width=\textwidth]{graphs/attention}
+\end{figure}
+\end{frame}

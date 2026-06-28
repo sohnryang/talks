@@ -1,0 +1,72 @@
+\begin{frame}{Hardware for Deep Learning}
+\framesubtitle{Tiled Matmul}
+
+\begin{itemize}
+  \item 딥러닝에서 가장 많이 사용되는 연산은 행렬 곱셈입니다.
+  \begin{itemize}
+    \item 행렬 곱셈을 빠르게 할수록 딥러닝 모델의 실행 속도를 개선할 수 있습니다.
+  \end{itemize}
+  \item 이렇게 행렬을 타일 단위로 곱하면 여러 이점이 있습니다.
+  \begin{enumerate}
+    \item 같은 연산을 위해 사용해야 하는 명령어 수를 줄입니다.
+    \pause
+    \item \textbf{메모리 접근 수를 줄입니다.}
+  \end{enumerate}
+\end{itemize}
+\pause
+\begin{figure}
+  \centering
+  \only<1-3>{%
+    \resizebox{0.8\linewidth}{!}{\includestandalone{tiled-matmul/matmul-1x1}}%
+    \caption{1x1 원소를 계산하는데 원소 8개, 총 8\texttimes 16 = 128개를 읽어야 합니다.}%
+  }
+  \only<4>{%
+    \resizebox{0.8\linewidth}{!}{\includestandalone{tiled-matmul/matmul-2x2}}%
+    \caption{2x2 원소를 계산하는데 원소 16개, 총 16\texttimes 4 = 64개를 읽어야 합니다.}%
+  }
+\end{figure}
+\end{frame}
+
+\begin{frame}{Hardware for Deep Learning}
+\framesubtitle{Pipelining}
+
+일반적으로 텐서 연산은 메모리 접근과 연산을 동시에 수행할 수 있습니다.
+
+\begin{figure}
+  \centering
+  \only<1>{\resizebox{0.9\linewidth}{!}{\includestandalone{pipeline-animation/frame1_parallel}}}%
+  \only<2>{\resizebox{0.9\linewidth}{!}{\includestandalone{pipeline-animation/frame2_parallel}}}%
+  \only<3>{\resizebox{0.9\linewidth}{!}{\includestandalone{pipeline-animation/frame3_parallel}}}%
+  \only<4>{\resizebox{0.9\linewidth}{!}{\includestandalone{pipeline-animation/frame4_parallel}}}%
+  \only<5>{\resizebox{0.9\linewidth}{!}{\includestandalone{pipeline-animation/frame5_parallel}}}%
+  \only<6>{\resizebox{0.9\linewidth}{!}{\includestandalone{pipeline-animation/frame6_parallel}}}%
+  \only<7>{\resizebox{0.9\linewidth}{!}{\includestandalone{pipeline-animation/frame7_parallel}}}%
+  \only<8>{\resizebox{0.9\linewidth}{!}{\includestandalone{pipeline-animation/frame8_parallel}}}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Hardware for Deep Learning}
+\framesubtitle{Roofline Model}
+
+\begin{itemize}
+  \item 메모리 접근과 연산을 병렬화하면 전체 속도는 둘 중 느린 것에 의해 정해집니다.
+  \item 대부분의 하드웨어에서 메모리는 연산 속도보다 느립니다.
+  \begin{itemize}
+    \item B200 GPU: 2,250 TFLOPS (BF16) vs 8 TB/s
+    \item 연산 속도는 더 큰 칩을 만들면 늘릴 수 있지만, 메모리는 빠르게 하기 어렵습니다.
+    \item 보통 compute bound가 되는 것을 목표로 최적화합니다.
+  \end{itemize}
+\end{itemize}
+
+\begin{figure}
+  \centering
+  \begin{subfigure}{0.5\textwidth}
+    \resizebox{!}{2.8cm}{\includestandalone{pipeline-diagrams/compute-bound}}
+    \caption{Compute bound}
+  \end{subfigure}
+  \begin{subfigure}{0.45\textwidth}
+    \resizebox{!}{2.8cm}{\includestandalone{pipeline-diagrams/balanced}}
+    \caption{Balanced}
+  \end{subfigure}
+\end{figure}
+\end{frame}

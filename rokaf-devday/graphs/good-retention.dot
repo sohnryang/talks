@@ -1,0 +1,33 @@
+digraph bad_retention {
+    rankdir = "LR";
+
+    W1 [shape=square,label=<W<FONT POINT-SIZE="10"><SUB>1</SUB></FONT>>];
+    W2 [shape=square,label=<W<FONT POINT-SIZE="10"><SUB>2</SUB></FONT>>];
+    X [shape=square];
+    out [shape=square];
+
+    subgraph cluster_fused {
+        label = "subgraph 1";
+        style = "dashed,rounded";
+        color = gray50;
+        matmul1 [label="matmul"];
+        relu1 [label="relu"];
+        matmul1 -> relu1 [label=<T<FONT POINT-SIZE="10"><SUB>1</SUB></FONT>>];
+    }
+    
+    subgraph cluster_fused2 {
+        label = "subgraph 2";
+        style = "dashed,rounded";
+        color = gray50;
+        matmul2 [label="matmul"];
+        relu2 [label="relu"];
+    }
+
+    W1 -> matmul1;
+    X -> matmul1;
+
+    W2 -> matmul2;
+    relu1 -> matmul2 [color=green,label=<T<FONT POINT-SIZE="10"><SUB>2</SUB></FONT>>];
+    matmul2 -> relu2;
+    relu2 -> out;
+}

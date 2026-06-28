@@ -1,0 +1,112 @@
+\documentclass[aspectratio=169,mathserif]{beamer}
+\usepackage{kotex}
+\setmainhangulfont{Noto Serif CJK KR}[
+  UprightFont=* Light, BoldFont=* Bold,
+  Script=Hangul, Language=Korean, AutoFakeSlant,
+]
+\setsanshangulfont{Noto Sans CJK KR}[
+  UprightFont=* DemiLight, BoldFont=* Medium,
+  Script=Hangul, Language=Korean, AutoFakeSlant,
+]
+\setmathhangulfont{Noto Sans CJK KR}[
+  SizeFeatures={
+    {Size=-6,  Font=* Medium},
+    {Size=6-9, Font=*},
+    {Size=9-,  Font=* DemiLight},
+  },
+  Script=Hangul, Language=Korean
+]
+\usepackage[most]{tcolorbox}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{pdftexcmds}
+\usepackage{standalone}
+\usepackage{ifthen}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds,shapes.geometric}
+
+\makeatletter
+\newcommand{\includegraphviz}[2][]{%
+  \typeout{(#2.dot)}%
+  \@addtofilelist{#2.dot}%
+  \edef\gv@dot{\pdf@filemoddate{#2.dot}}%
+  \edef\gv@pdf{\pdf@filemoddate{#2.pdf}}%
+  % \pdf@filemoddate returns "" for a missing file, which sorts as "older",
+  % so a missing PDF also triggers regeneration
+  \ifnum\pdf@strcmp{\gv@dot}{\gv@pdf}>0\relax
+    \immediate\write18{dot -Tpdf -Gmargin=0 -o "#2.pdf" "#2.dot"}%
+  \fi
+  \IfFileExists{#2.pdf}%
+    {\includegraphics[#1]{#2.pdf}}%
+    {\fbox{Missing #2.pdf — compile with shell-escape enabled}}%
+}
+\makeatother
+
+\title{MLSys 2026 Google Competition 참가 후기}
+\author{데이터플랫폼팀 병장 손량}
+
+\usetheme{default}
+\setbeamertemplate{itemize items}[circle]
+
+\AtBeginSection[]
+{
+\begin{frame}
+  \frametitle{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+}
+
+\begin{document}
+\begin{frame}
+\maketitle
+\end{frame}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{TL;DR}
+\include{tldr}
+
+\section{Backround}
+
+\subsection{Systems View on Deep Learning Models}
+\include{systems-view}
+
+\subsection{Computation Graphs}
+\include{computation-graphs}
+
+\subsection{Hardware for Deep Learning}
+\include{hardware}
+
+\subsection{Operator Fusion}
+\include{operator-fusion}
+
+\section{Solving the Problem}
+
+\subsection{Problem Analysis}
+\include{problem}
+
+\subsection{Global Optimization}
+\include{global}
+
+\subsection{Local Optimization}
+\include{local}
+
+\section{Meta-strategy}
+\include{meta-strategy}
+
+\begin{frame}
+\frametitle{Thank You!}
+
+코드와 발표 자료 등은 깃헙 저장소에서 확인할 수 있습니다.
+
+\url{https://github.com/sohnryang/mlsys2026-graph-scheduling}
+\end{frame}
+\end{document}

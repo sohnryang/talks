@@ -1,0 +1,42 @@
+\definecolor{cA}{RGB}{66,133,244}
+\definecolor{cC}{RGB}{52,168,83}
+\definecolor{cGray}{RGB}{120,120,120}
+
+\begin{tikzpicture}[
+  font=\small,
+  lbl/.style={font=\footnotesize\itshape},
+  op/.style={font=\large},
+]
+  % ---- grid drawing helper (3x3) ----
+  \def\grid#1#2#3{% x y color
+    \begin{scope}[shift={(#1,#2)}]
+      \draw[fill=#3!22,draw=#3,thick] (0,0) rectangle (1.5,1.5);
+      \foreach \k in {0.5,1.0}{
+        \draw[#3!55] (\k,0)--(\k,1.5);
+        \draw[#3!55] (0,\k)--(1.5,\k);}
+    \end{scope}}
+ 
+  % ===== Title & definition (centered on rendered image) =====
+  \node[op]            at (2.889, 4.55) {Elementwise};
+  \node[font=\footnotesize] at (2.889, 3.95) {$B = f(A_1, A_2, \dots, A_k)$};
+ 
+  % ===== Operands: overlapping stacked squares =====
+  % A_1 at top-left (back), stack moves down-right to A_k (front, on top)
+  \grid{0.30}{2.00}{cA}
+  \grid{0.55}{1.75}{cA}
+  \grid{0.80}{1.50}{cA}
+  % operand list below the stack
+  \node[lbl] at (1.30,1.05) {$A_1, \dots, A_k \in \mathbb{R}^{N \times M}$};
+ 
+  % ===== Arrow with f =====
+  \draw[-{Latex},cGray,line width=1pt] (2.70,2.50) -- (3.90,2.50)
+        node[midway,above,font=\itshape] {$f$};
+ 
+  % ===== Result: single square =====
+  \grid{4.30}{1.75}{cC}
+  \node[lbl] at (5.05,1.30) {$B \in \mathbb{R}^{N \times M}$};
+  %% ===== Normalize height for side-by-side placement =====
+  \coordinate (Lx) at (current bounding box.west);
+  \coordinate (Rx) at (current bounding box.east);
+  \useasboundingbox (Lx |- 0,0.3226) rectangle (Rx |- 0,5.2748);
+\end{tikzpicture}

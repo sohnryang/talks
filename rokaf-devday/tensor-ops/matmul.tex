@@ -1,0 +1,51 @@
+\definecolor{cA}{RGB}{66,133,244}
+\definecolor{cB}{RGB}{234,67,53}
+\definecolor{cC}{RGB}{52,168,83}
+\definecolor{cGray}{RGB}{120,120,120}
+
+\begin{tikzpicture}[
+  font=\small,
+  lbl/.style={font=\footnotesize\itshape},
+  op/.style={font=\large},
+]
+  % ===== Geometry =====
+  % cell = 0.3 units.
+  % C: cols x 2.3..4.1 (6 cols), rows y 1.0..2.8 (6 rows)
+  % Highlighted row: y 1.9..2.2 (4th row). Highlighted col: x 3.2..3.5 (4th col).
+ 
+  % --- A: M x K, 2 cols, 6 rows. x 1.0..1.6 (2 cols), y 1.0..2.8 ---
+  \draw[fill=cA!25,draw=cA] (1.0,1.0) rectangle (1.6,2.8);
+  \draw[fill=cA!70,draw=cA] (1.0,1.9) rectangle (1.6,2.2);              % highlighted row
+  \foreach \y in {1.3,1.6,1.9,2.2,2.5}{\draw[cA!60] (1.0,\y)--(1.6,\y);}
+  \draw[cA!60] (1.3,1.0)--(1.3,2.8);                                   % 1 internal vertical
+  \draw[cA] (1.0,1.0) rectangle (1.6,2.8);
+  \node[lbl] at (1.3,0.65) {$A \in \mathbb{R}^{M \times K}$};
+ 
+  % --- B: K x N, 2 rows, 6 cols. x 2.3..4.1, y 2.95..3.55 ---
+  \draw[fill=cB!25,draw=cB] (2.3,2.95) rectangle (4.1,3.55);
+  \draw[fill=cB!70,draw=cB] (3.2,2.95) rectangle (3.5,3.55);            % highlighted col
+  \foreach \x in {2.6,2.9,3.2,3.5,3.8}{\draw[cB!60] (\x,2.95)--(\x,3.55);}
+  \draw[cB!60] (2.3,3.25)--(4.1,3.25);                                 % 1 internal horizontal
+  \draw[cB] (2.3,2.95) rectangle (4.1,3.55);
+  \node[lbl,anchor=east] at (2.25,3.25) {$B \in \mathbb{R}^{K \times N}$};
+ 
+  % --- C: M x N, 6 cols, 6 rows. x 2.3..4.1, y 1.0..2.8 ---
+  \draw[fill=cC!25,draw=cC] (2.3,1.0) rectangle (4.1,2.8);
+  \draw[fill=cC!80,draw=cC] (3.2,1.9) rectangle (3.5,2.2);             % output cell
+  \foreach \x in {2.6,2.9,3.2,3.5,3.8}{\draw[cC!55] (\x,1.0)--(\x,2.8);}
+  \foreach \y in {1.3,1.6,1.9,2.2,2.5}{\draw[cC!55] (2.3,\y)--(4.1,\y);}
+  \draw[cC] (2.3,1.0) rectangle (4.1,2.8);
+  \node[lbl] at (3.2,0.65) {$C \in \mathbb{R}^{M \times N}$};
+ 
+  % arrows: A-row -> C-cell ; B-col -> C-cell
+  \draw[-{Latex},cGray,thick] (1.6,2.05) -- (3.18,2.05);
+  \draw[-{Latex},cGray,thick] (3.35,2.95) -- (3.35,2.22);
+ 
+  % ===== Title =====
+  \node[op] at (2.25, 4.05) {Matrix Multiplication};
+ 
+  % ===== Normalize height for side-by-side placement =====
+  \coordinate (Lx) at (current bounding box.west);
+  \coordinate (Rx) at (current bounding box.east);
+  \useasboundingbox (Lx |- 0,-0.2476) rectangle (Rx |- 0,4.7045);
+\end{tikzpicture}

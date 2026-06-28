@@ -1,0 +1,16 @@
+\documentclass[tikz,border=4pt]{standalone}
+\input{tikzcommon}
+\begin{document}
+\begin{tikzpicture}
+  \CanvasBB
+  \haloSGone{0.30}{1}
+  \tilefill{top}{sgB}
+  \StaticScene
+  \activeborder{bot}{sgB}
+  \sinkring{2.3}{5.3}{sgB}
+  \recomputeTag
+  \tilemark{out}
+  \memtext{$T_2$,\; $A$:b}{$A$,\; out:t}
+  \pipe{8.92}
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,75 @@
+\documentclass[border=12pt]{standalone}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\begin{document}
+\definecolor{memhue}{HTML}{2563EB}%
+\definecolor{comphue}{HTML}{E8870C}%
+
+\begin{tikzpicture}[x=0.24cm, font=\sffamily, lbl/.style={font=\sffamily\small}]
+\def\bh{0.24}
+
+% memory bar with on-bar label (#1 x0 #2 x1 #3 yc #4 opacity #5 label)
+\newcommand{\mbar}[5]{%
+  \fill[memhue, fill opacity=#4] (#1,#3-\bh) rectangle (#2,#3+\bh);
+  \draw[memhue, draw opacity=0.5, line width=0.3pt] (#1,#3-\bh) rectangle (#2,#3+\bh);
+  \pgfmathsetmacro{\mx}{(#1+#2)/2}%
+  \ifdim#4 pt>0.62pt\relax
+    \node[font=\sffamily\scriptsize, text=white] at (\mx,#3) {#5};%
+  \else
+    \node[font=\sffamily\scriptsize, text=memhue!80!black] at (\mx,#3) {#5};%
+  \fi}
+% compute bar with on-bar label (#1 x0 #2 x1 #3 yc #4 opacity #5 label)
+\newcommand{\cbar}[5]{%
+  \fill[comphue, fill opacity=#4] (#1,#3-\bh) rectangle (#2,#3+\bh);
+  \draw[comphue, draw opacity=0.5, line width=0.3pt] (#1,#3-\bh) rectangle (#2,#3+\bh);
+  \pgfmathsetmacro{\mx}{(#1+#2)/2}%
+  \ifdim#4 pt>0.62pt\relax
+    \node[font=\sffamily\scriptsize, text=white] at (\mx,#3) {#5};%
+  \else
+    \node[font=\sffamily\scriptsize, text=comphue!85!black] at (\mx,#3) {#5};%
+  \fi}
+
+\def\yUm{5.4}\def\yUc{4.55}
+\def\yFm{2.7}\def\yFc{1.85}
+
+% ======================= UNFUSED =======================
+\node[anchor=west, font=\sffamily\bfseries] at (0,6.05) {Unfused};
+\node[lbl, anchor=east] at (-1.5,\yUm) {Mem};
+\node[lbl, anchor=east] at (-1.5,\yUc) {Comp};
+\foreach \xs/\op/\lab in {%
+  0/1.0/A,2/0.74/B,4/1.0/A,6/0.74/B,8/0.38/T,10/1.0/A,12/0.74/B,14/0.38/T,%
+  16/1.0/A,18/0.74/B,20/0.38/T,22/0.38/T,%
+  24/0.38/T,26/0.54/C,28/0.38/T,30/0.54/C,32/0.24/out,34/0.38/T,36/0.54/C,38/0.24/out,%
+  40/0.38/T,42/0.54/C,44/0.24/out,46/0.24/out}{%
+  \mbar{\xs}{\xs+2}{\yUm}{\op}{\lab}}
+% compute now 1.5 units wide (~75% of one A-tile load)
+\foreach \xs/\op/\lab in {4/0.92/+,8/0.92/+,14/0.92/+,20/0.92/+,%
+  28/0.5/$\ast$,32/0.5/$\ast$,38/0.5/$\ast$,44/0.5/$\ast$}{%
+  \cbar{\xs}{\xs+1.5}{\yUc}{\op}{\lab}}
+\draw[-{Stealth[length=5pt]}, line width=0.7pt] (0,4.1) -- (50,4.1);
+\node[lbl, anchor=west] at (50.3,4.1) {time};
+
+% ======================= FUSED =======================
+\node[anchor=west, font=\sffamily\bfseries] at (0,3.35) {Fused};
+\node[lbl, anchor=east] at (-1.5,\yFm) {Mem};
+\node[lbl, anchor=east] at (-1.5,\yFc) {Comp};
+\foreach \xs/\op/\lab in {%
+  0/1.0/A,2/0.74/B,4/0.54/C,6/1.0/A,8/0.74/B,10/0.54/C,12/0.24/out,%
+  14/1.0/A,16/0.74/B,18/0.54/C,20/0.24/out,22/1.0/A,24/0.74/B,26/0.54/C,28/0.24/out,30/0.24/out}{%
+  \mbar{\xs}{\xs+2}{\yFm}{\op}{\lab}}
+\foreach \xs/\op/\lab in {4/0.92/+,10/0.92/+,18/0.92/+,26/0.92/+,%
+  6/0.5/$\ast$,12/0.5/$\ast$,20/0.5/$\ast$,28/0.5/$\ast$}{%
+  \cbar{\xs}{\xs+1.5}{\yFc}{\op}{\lab}}
+\draw[-{Stealth[length=5pt]}, line width=0.7pt] (0,1.4) -- (50,1.4);
+\node[lbl, anchor=west] at (50.3,1.4) {time};
+
+% ======================= coincidence lines + ticks =======================
+% only where a memory boundary and a compute boundary meet exactly.
+% compute = 1.5 (off the even memory grid), so only the compute STARTS coincide.
+\newcommand{\vd}[3]{\draw[densely dashed, gray!55, line width=0.4pt] (#1,#2) -- (#1,#3);}
+\newcommand{\axtick}[2]{\draw[line width=0.5pt] (#1,#2-0.08) -- (#1,#2+0.08);}
+\foreach \x in {4,8,14,20,28,32,38,44}{\vd{\x}{4.1}{5.64}\axtick{\x}{4.1}}
+\foreach \x in {4,6,10,12,18,20,26,28}{\vd{\x}{1.4}{2.94}\axtick{\x}{1.4}}
+
+\end{tikzpicture}
+\end{document}

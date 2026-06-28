@@ -1,0 +1,16 @@
+digraph matmul_relu_fused {
+    rankdir = "LR";
+    
+    W1 [shape=square,label=<W<FONT POINT-SIZE="10"><SUB>1</SUB></FONT>>];
+    W2 [shape=square,label=<W<FONT POINT-SIZE="10"><SUB>2</SUB></FONT>>];
+    X [shape=square];
+    out [shape=square];
+    matmulrelu1 [label="matmul + relu"];
+    matmulrelu2 [label="matmul + relu"];
+    W1 -> matmulrelu1;
+    X -> matmulrelu1;
+    
+    W2 -> matmulrelu2;
+    matmulrelu1 -> matmulrelu2;
+    matmulrelu2 -> out;
+}

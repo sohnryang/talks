@@ -1,0 +1,13 @@
+digraph addmul {
+    rankdir = "LR";
+    
+    A [shape=square];
+    B [shape=square];
+    C [shape=square];
+    A -> "+";
+    B -> "+";
+    "+" -> "*";
+    C -> "*";
+    out [shape=square];
+    "*" -> out;
+}

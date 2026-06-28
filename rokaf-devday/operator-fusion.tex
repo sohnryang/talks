@@ -1,0 +1,47 @@
+\begin{frame}{Operator Fusion}
+\framesubtitle{Example: Chain of Elementwise Operators}
+
+\begin{figure}
+  \centering
+  \includegraphviz[width=0.5\linewidth]{graphs/addmul}
+  \caption{\((A + B) * C\)의 계산 그래프}
+\end{figure}
+
+\begin{itemize}
+  \item 덧셈과 곱셈을 따로 실행한다고 가정합시다.
+  \begin{itemize}
+    \item 덧셈 결과를 메모리에 저장하고 곱셈하기 전에 다시 읽어야 합니다.
+    \item 덧셈과 곱셈 연산보다 메모리 접근에 시간이 낭비됩니다.
+  \end{itemize}
+  \item 덧셈과 곱셈을 한번에 실행하면 낭비되는 시간을 줄일 수 있습니다.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Operator Fusion}
+\framesubtitle{Example: Chain of Elementwise Operators}
+
+\begin{figure}
+  \centering
+  \resizebox{\linewidth}{!}{\includestandalone{pipeline-diagrams/fusion-timeline}}
+\end{figure}
+
+여전히 memory bound 이지만, 실행 시간이 훨씬 줄었습니다.
+\end{frame}
+
+\begin{frame}{Operator Fusion}
+\framesubtitle{계산을 더 많이 하고도 빨라질 수 있다?}
+
+\begin{figure}
+  \centering
+  \includegraphviz[width=0.75\linewidth]{graphs/residual}
+  \caption{Residual connection이 있는 그래프}
+\end{figure}
+
+\begin{itemize}
+  \item op2와 op3를 한번에 계산할 수 없다고 가정합시다.
+  \item op1과 op2를 합치면 op3에서 입력을 받을 수 없고, 반대도 마찬가지입니다.
+  \pause
+  \item op1의 계산량이 적다면, (op1, op2), (op1, op3)로 합치는 것이 빠를 수 있습니다.
+  \item FlashAttention과 같은 고성능 커널 설계에 이 아이디어가 이용된 바 있습니다.
+\end{itemize}
+\end{frame}

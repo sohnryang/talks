@@ -1,0 +1,56 @@
+\begin{tikzpicture}[
+  font=\sffamily,
+  >=Stealth,
+  box/.style={rounded corners=2pt,draw,minimum height=9mm,minimum width=34mm,align=center},
+  norm/.style={box,fill=yellow!25,draw=olive!60},
+  global/.style={box,fill=magenta!18,draw=magenta!60,minimum width=34mm,minimum height=9mm,opacity=0.25,text opacity=0.25},
+  ffnn/.style={box,fill=blue!18,draw=blue!50,minimum width=34mm,minimum height=9mm,opacity=0.25,text opacity=0.25},
+  add/.style={circle,draw,inner sep=0pt,minimum size=8mm,font=\large},
+  line/.style={->,thick}
+]
+ 
+% ---- vertical layout (top to bottom) ----
+\node[norm] (n1) {RMSNorm};
+\node[global,below=6mm of n1] (attn) {Attention};
+\node[norm,below=6mm of attn] (n2) {RMSNorm};
+\node[add,below=7mm of n2] (add1) {$+$};
+ 
+\node[norm,below=11mm of add1] (n3) {RMSNorm};
+\node[ffnn,below=6mm of n3] (ffnn) {FFNN};
+\node[norm,below=6mm of ffnn] (n4) {RMSNorm};
+\node[add,below=7mm of n4] (add2) {$+$};
+ 
+% ---- main path ----
+\draw[line] (n1) -- (attn);
+\draw[line] (attn) -- (n2);
+\draw[line] (n2) -- (add1);
+\draw[line] (add1) -- (n3);
+\draw[line] (n3) -- (ffnn);
+\draw[line] (ffnn) -- (n4);
+\draw[line] (n4) -- (add2);
+ 
+% ---- input / output stubs ----
+\coordinate (in) at ($(n1.north)+(0,8mm)$);
+\draw[line] (in) -- (n1.north);
+\draw[line] (add2.south) -- ($(add2.south)-(0,8mm)$);
+ 
+% ---- residual connections (left side) ----
+\coordinate (tap1) at ($(in)!0.5!(n1.north)$);
+\coordinate (lx) at ($(n1.west)+(-6mm,0)$);
+\coordinate (l1) at (lx);
+\coordinate (l2) at (lx);
+\coordinate (tap2) at ($(add1.south)+(0,-4mm)$);
+\draw[line] (tap1) -- (tap1 -| lx) -- (add1.west -| lx) -- (add1.west);
+\fill (tap1) circle (1pt);
+ 
+\draw[line] (tap2) -- (tap2 -| lx) -- (add2.west -| lx) -- (add2.west);
+\fill (tap2) circle (1pt);
+ 
+% ---- enclosing decoder box ----
+\begin{scope}[on background layer]
+  \node[rounded corners=2pt,fill=blue!6,
+        fit=(n1)(attn)(n2)(add1)(n3)(ffnn)(n4)(add2)(l1)(l2),
+        inner ysep=7mm,inner xsep=2mm] (dec) {};
+\end{scope}
+ 
+\end{tikzpicture}
