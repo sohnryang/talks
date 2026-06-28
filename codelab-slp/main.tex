@@ -1,0 +1,743 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage{kotex}
+\usepackage{listings}
+\usepackage[lighttt]{lmodern}
+\usepackage{graphics}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{xcolor}
+
+\setsanshangulfont[ItalicFont={*},ItalicFeatures={FakeSlant=.22}]{Noto Sans CJK KR}
+\title{All You Need Is Superword-Level Parallelism: \\ Systematic Control-Flow Vectorization with SLP (PLDI '22)}
+\date{January 16, 2025}
+\author[shortname]{Yishen Chen\inst{1} \and Charith Mendis\inst{2} \and Saman Amarasinghe\inst{1}}
+\institute[shortinst]{\inst{1} Massachusetts Institute of Technology \and \inst{2} University of Illinois at Urbana-Champaign}
+
+\usetheme{default}
+\setbeamertemplate{itemize items}[circle]
+
+\lstset{
+  numbers=none, frame=single, showspaces=false,
+  showstringspaces=false, showtabs=false, breaklines=true, showlines=true,
+  breakatwhitespace=true, basicstyle=\scriptsize\ttfamily\color{black},
+  keywordstyle=\bfseries, basewidth=0.5em,
+  moredelim=**[is][\color{lightgray}]{(*@}{@*)},
+  moredelim=**[is][\color{red}]{(|@}{@|)},
+}
+
+\begin{document}
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}
+  \frametitle{Outline}
+  \tableofcontents
+\end{frame}
+
+\AtBeginSection[]
+{
+\begin{frame}
+  \frametitle{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+}
+
+\section{Introduction and Motivation}
+\subsection{Current State of Autovectorization}
+\begin{frame}
+  \frametitle{Current State of Autovectorization}
+  \framesubtitle{A tale of two methodologies}
+
+  \begin{itemize}
+    \item Two methods of autovectorization: {\bfseries loop vectorization} and {\bfseries SLP vectorization}
+    \pause
+    \item Loop vectorization: targets {\bfseries loop-level parallelism}
+    \begin{itemize}
+      \item Influenced by long-vector architectures (e.g., CRAY)
+      \item Works by widening scalar instructions in loop body to vectorized counterparts
+      \item Requires complex dependence analyses
+    \end{itemize}
+    \pause
+    \item Superword-level parallelism vectorization: exploits {\bfseries short-vector parallelism}
+    \begin{itemize}
+      \item Influenced by modern vector extensions (e.g., Intel AVX)
+      \item Works by packing independent and isomorphic groups of instructions
+      \item More flexible, but harder to handle control flow
+    \end{itemize}
+    \pause
+    \item The two techniques have their advantages and disadvantages
+    \begin{itemize}
+      \item Production compilers use both techniques in separate passes
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Current State of Autovectorization}
+  \framesubtitle{Loop vectorization in action}
+
+  \begin{itemize}
+    \item SAXPY loop widened by factor of 8
+  \end{itemize}
+  \begin{figure}
+    \centering
+    \begin{minipage}{.45\textwidth}
+      \begin{lstlisting}[language=C]
+void saxpy(float a, float x[], float y[], int n) {
+  for (int i = 0; i < n; i++)
+    y[i] = a * x[i] + y[i];
+}
+      \end{lstlisting}
+    \end{minipage}
+    \hspace{0.2cm}
+    \pause
+    \begin{minipage}{.45\textwidth}
+      \begin{lstlisting}[language=C]
+void saxpy(float a, float x[], float y[], int n) {
+  int i;
+  for (i = 0; i + 8 <= n; i += 8)
+    y[i:i + 8] = splat(a, 8) * x[i:i + 8] + y[i:i + 8];
+  for (; i < n; i++)
+    y[i] = a * x[i] + y[i];
+}
+      \end{lstlisting}
+    \end{minipage}
+  \end{figure}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Current State of Autovectorization}
+  \framesubtitle{SLP vectorization in action}
+
+  \begin{itemize}
+    \item Four elements grouped and processed together
+  \end{itemize}
+  \begin{figure}
+    \centering
+    \begin{minipage}{.45\textwidth}
+      \begin{lstlisting}[language=C]
+void foo(int a1, int a2, int b1, int b2, int *A) {
+  A[0] = a1 * (a1 + b1);
+  A[1] = a2 * (a2 + b2);
+  A[2] = a1 * (a1 + b1);
+  A[3] = a2 * (a2 + b2);
+}
+      \end{lstlisting}
+    \end{minipage}
+    \hspace{0.2cm}
+    \pause
+    \begin{minipage}{.45\textwidth}
+      \begin{lstlisting}[language=C]
+void foo(int a1, int a2, int b1, int b2, int *A) {
+  va = {a1, a2, a1, a2};
+  vb = {b1, b2, b1, b2};
+  A[0:4] = va * (va + vb);
+}
+      \end{lstlisting}
+    \end{minipage}
+  \end{figure}
+\end{frame}
+
+\subsection{Flexibility of SLP Vectorization}
+\begin{frame}[fragile]
+  \frametitle{Flexibility of SLP Vectorization}
+  \framesubtitle{Inefficiency of loop vectorization}
+
+  \begin{itemize}
+    \item Naive vectorization of unrolled SAXPY code
+  \end{itemize}
+  \begin{figure}
+    \centering
+    \begin{minipage}{.45\textwidth}
+      \begin{lstlisting}[language=C]
+void saxpy(float a, float x[], float y[], int n) {
+  for (int i = 0; i + 2 <= n; i += 2) {
+    y[i] = a * x[i] + y[i];
+    y[i + 1] = a * x[i + 1] + y[i + 1];
+  }
+  // handle leftover elements
+}
+      \end{lstlisting}
+    \end{minipage}
+    \hspace{0.2cm}
+    \pause
+    \begin{minipage}{.45\textwidth}
+      \begin{lstlisting}[language=C]
+void saxpy(float a, float x[], float y[], int n) {
+  int i;
+  for (i = 0; i + 16 <= n; i += 16) {
+    vx = x[i:i + 16]; vy = y[i:i + 16];
+    vx_even = shuffle_even(vx);
+    vy_even = shuffle_even(vy);
+    vx_odd = shuffle_odd(vx);
+    vy_odd = shuffle_odd(vy);
+    y[i:i + 16] = interleave(
+      splat(a, 8) * vx_even + vy_even,
+      splat(a, 8) * vx_odd + vy_odd
+    );
+  }
+  // handle leftover elements
+}
+      \end{lstlisting}
+    \end{minipage}
+  \end{figure}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Flexibility of SLP Vectorization}
+  \framesubtitle{Flexibility of unroll-and-SLP}
+
+  \begin{itemize}
+    \item After unrolling 4 times, SLP vectorization leads to better code
+  \end{itemize}
+  \begin{figure}
+    \centering
+    \begin{minipage}{.45\textwidth}
+      \begin{lstlisting}[language=C]
+void saxpy(float a, float x[], float y[], int n) {
+  for (int i = 0; i < n; i += 8) {
+    y[i] = a * x[i] + y[i];
+    y[i + 1] = a * x[i + 1] + y[i + 1];
+    y[i + 2] = a * x[i + 2] + y[i + 2];
+    y[i + 3] = a * x[i + 3] + y[i + 3];
+    y[i + 4] = a * x[i + 4] + y[i + 4];
+    y[i + 5] = a * x[i + 5] + y[i + 5];
+    y[i + 6] = a * x[i + 6] + y[i + 6];
+    y[i + 7] = a * x[i + 7] + y[i + 7];
+  }
+  // handle leftover elements
+}
+      \end{lstlisting}
+    \end{minipage}
+    \hspace{0.2cm}
+    \pause
+    \begin{minipage}{.45\textwidth}
+      \begin{lstlisting}[language=C]
+void saxpy(float a, float x[], float y[], int n) {
+  int i;
+  for (i = 0; i + 8 <= n; i += 8)
+    y[i:i + 8] = splat(a, 8) * x[i:i + 8] + y[i:i + 8];
+  // handle leftover elements
+}
+      \end{lstlisting}
+    \end{minipage}
+  \end{figure}
+\end{frame}
+
+\subsection{Key Contributions}
+\begin{frame}
+  \frametitle{TL;DR}
+  \framesubtitle{Key contributions}
+
+  \begin{enumerate}
+    \item {\bfseries Predicated SSA} for simplifying code motion across arbitrary control flow regions
+    \item {\bfseries SuperVectorization}, a generalized form of SLP vectorization capable of handling inner and outer loops as well as straight-line code
+    \item Prototype implementation which outperforms LLVM's vectorization passes
+  \end{enumerate}
+\end{frame}
+
+\section{Groundwork for SuperVectorization}
+\subsection{Handling Control Flow in SLP Vectorization}
+\begin{frame}[fragile]
+  \frametitle{Shortcomings of Conventional SLP Vectorization}
+
+  \begin{itemize}
+    \item Conventional SLP vectorization has been limited to straight-line code
+    \begin{itemize}
+      \item However, SLP is not just about similar instructions in a single basic block!
+    \end{itemize}
+  \end{itemize}
+
+  \pause
+  \begin{lstlisting}[language=C]
+void search(int haystack[], int needles[2], int needle_idxs[2], int n) {
+  for (int i = 0; i < n; i++)
+    if (haystack[i] == needles[0]) {
+      needle_idxs[0] = i;
+      break;
+    }
+  for (int i = 0; i < n; i++)
+    if (haystack[i] == needles[1]) {
+      needle_idxs[1] = i;
+      break;
+    }
+}
+  \end{lstlisting}
+  \begin{itemize}
+    \item The two loops are independent and, thus can be run in parallel
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Handling Control Flow in SLP Vectorization}
+  \framesubtitle{Key challenges}
+
+  \begin{itemize}
+    \item {\bfseries Code motion} across basic blocks is challenging
+    \begin{itemize}
+      \item Packing instructions involve code motion
+      \item Exploiting SLP across basic block boundaries means code motion across BBs
+      \item In traditional IR with CFG this requires restructuring CFG, which is complex
+    \end{itemize}
+    \item {\bfseries If-conversion}: partially convert control flow into straight-line code
+    \begin{itemize}
+      \item \(\phi\)-nodes are converted into \texttt{select} instructions
+      \item Analogous to converting \texttt{if (cond) f(); else g();} into \texttt{cond ? f() : g();}
+      \item All branches have to be executed regardless of condition
+    \end{itemize}
+    \pause
+    \item Solution: {\bfseries Predicated SSA} for code motion and conditional if-conversion
+  \end{itemize}
+\end{frame}
+
+\subsection{Introduction to Predicated SSA}
+\begin{frame}
+  \frametitle{Introduction to Predicated SSA}
+  \framesubtitle{Definition}
+
+  \begin{itemize}
+    \item Basic idea: ``flatten'' the CFG to expose SLP, while retaining control dependences
+    \pause
+    \item Remove distinctions of basic blocks by introducing {\bfseries control predicates}
+    \begin{itemize}
+      \item Annotates each instruction as boolean flags determining whether to execute
+    \end{itemize}
+    \pause
+    \item {\bfseries Differentiate \(\phi\)-nodes} to capture its precise semantics
+    \begin{itemize}
+      \item Two main uses of \(\phi\)-nodes: loop headers and control-flow joins
+      \item \(\mu\)-nodes for uses in loop header, gated \(\phi\)-nodes for control-flow joins
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Introduction to Predicated SSA}
+  \framesubtitle{Definition}
+
+  \begin{align*}
+    \mathsf{fn} &\Coloneqq \mathsf{item}_1 : \mathsf{p}_1, \dots, \mathsf{item}_n : \mathsf{p}_n \\
+    \mathsf{c} &\Coloneqq \textit{branch conditions} \\
+    \mathsf{p} &\Coloneqq \textbf{true}\; |\; \mathsf{c}\; |\; \bar{\mathsf{c}}\; |\; \mathsf{p}_1 \land \mathsf{p}_2\; |\; \mathsf{p}_1 \lor \mathsf{p}_2 \\
+    \mathsf{item} &\Coloneqq \textit{instruction}\; |\; \mathsf{loop} \\
+    \mathsf{loop} &\Coloneqq \textbf{with}\; \mathsf{v}_1 = \mathsf{\mu}_1, \dots \mathsf{v}_m = \mathsf{\mu}_m\; \textbf{do}\; \mathsf{item}_1 : \mathsf{p}_1, \dots, \mathsf{item}_n : \mathsf{p}_n\; \textbf{while}\; \mathsf{p}_\text{cont} \\
+    \mathsf{\mu} &\Coloneqq \textbf{mu}(\mathsf{v}_\text{init}, \mathsf{v}_\text{rec}) \\
+    \mathsf{\phi} &\Coloneqq \textbf{phi}(\mathsf{v}_1 : \mathsf{p}_1, \dots, \mathsf{v}_n : \mathsf{p}_n) \\
+    \mathsf{v} &\Coloneqq \mathsf{\mu}\; |\; \textit{instruction}\; |\; \textit{constant}\; |\; \textit{argument}
+  \end{align*}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Introduction to Predicated SSA}
+  \framesubtitle{Example}
+
+  \begin{figure}
+    \centering
+    \begin{minipage}{.45\textwidth}
+      \begin{lstlisting}[language=C]
+for (int i = 0; i < n; i++)
+  if (haystack[i] == needles[0]) {
+    needle_idxs[0] = i;
+    break;
+  }
+      \end{lstlisting}
+    \end{minipage}
+    \hspace{0.2cm}
+    \begin{minipage}{.45\textwidth}
+      \begin{lstlisting}
+with i = mu(0, i') do
+  t = load haystack[i]      : true
+  needle = load needles[0]  : true
+  found = cmp eq, t, needle : true
+  i' = add i, 1             : true
+  not_found = not found     : true
+  lt_n = cmp lt i', n       : true
+while not_found and lt_n    : true
+store i, needle_idxs[0]     : found
+      \end{lstlisting}
+    \end{minipage}
+  \end{figure}
+\end{frame}
+
+\section{SuperVectorization}
+\begin{frame}
+  \frametitle{Vectorization Workflow}
+  \framesubtitle{SuperVectorization at a glance}
+
+  \begin{enumerate}
+    \item Converting CFG to Predicated SSA
+    \item Unroll and Packing
+    \item Loop transformations
+    \item Vector instruction generation
+    \item Converting Predicated SSA to CFG
+  \end{enumerate}
+\end{frame}
+
+\subsection{Conversion to Predicated SSA}
+\begin{frame}
+  \frametitle{Conversion to Predicated SSA}
+  \framesubtitle{High-level overview}
+
+  \begin{enumerate}
+    \item Convert input IR into a canonical form resembling \texttt{do-while} loops
+    \begin{itemize}
+      \item Single incoming edge and back edge, dedicated loop header, preheader, and latch
+    \end{itemize}
+    \pause
+    \item Classify \(\phi\)-nodes according to its uses
+    \begin{itemize}
+      \item Forward \(\phi\)-nodes: use gated \(\phi\)-nodes
+      \item Loop header \(\phi\)-nodes: use \(\mu\)-nodes
+    \end{itemize}
+    \pause
+    \item Assign and calculate control predicates for all blocks
+    \begin{itemize}
+      \item Disjunction of branch conditions of control-dependent blocks' post-dominant successors
+      \item All instructions in a block share one control predicate
+    \end{itemize}
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Conversion to Predicated SSA}
+  \framesubtitle{Details of control predicate calculation}
+
+  \begin{itemize}
+    \item For a basic block \(b\) to execute, two conditions must be satisfied:
+    \begin{enumerate}
+      \item Control flow reaches some block \(b'\), a control-dependent basic block of \(b\)
+      \item \(b'\) takes a branch that leads to \(b\)
+    \end{enumerate}
+    \pause
+    \item Condition 1: check using {\bfseries post-dominance frontier}
+    \pause
+    \item Condition 2: simple to consider when all basic blocks have at most two successors
+    \begin{itemize}
+      \item i.e., no \texttt{switch} and indirect branches
+      \pause
+      \item Recall that \(b'\) is in the post-dominance frontier of \(b\)
+      \item There exists an edge \(b' \to b''\) where \(b''\) is a successor of \(b'\) and post-dominant on \(b\)
+      \item Such \(b''\) is unique as \(b'\) has at most two outgoing edges
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Conversion to Predicated SSA}
+  \framesubtitle{Example}
+
+  \begin{figure}
+    \centering
+    \begin{minipage}{0.45\textwidth}
+      \begin{lstlisting}[language=C]
+void search(int haystack[], int needles[2], int needle_idxs[2], int n) {
+  for (int j = 0; j < n; j++)
+    if (haystack[j] != needles[0]) {
+      needle_idxs[0] = j;
+      break;
+    }
+}
+      \end{lstlisting}
+    \end{minipage}
+    \hspace{0.2cm}
+    \begin{minipage}{0.45\textwidth}
+      \includegraphics<1>[width=1\textwidth]{search_1x_cfg.pdf}%
+      \includegraphics<2>[width=1\textwidth]{search_1x_cfg.if.then.pdf}%
+      \includegraphics<3>[width=1\textwidth]{search_1x_cfg.if.then.postdom.pdf}%
+    \end{minipage}
+  \end{figure}
+\end{frame}
+
+\subsection{Performing Vectorization}
+\begin{frame}
+  \frametitle{Vector Packing}
+  \framesubtitle{Overview}
+
+  \begin{itemize}
+    \item Capture SLP revealed by conversion to Predicated SSA and unrolling
+    \item SuperVectorization is compatible with arbitrary packing heuristics
+    \pause
+    \begin{itemize}
+      \item The authors adapt the bottom-up SLP heuristic, which is simple and commonly used
+      \item Starting from \textit{seeds} (i.e., contiguous stores, reductions), traverse use-def chains
+      \item Stop when nonvectorizable instructions are found, check dependence cycles and cost
+    \end{itemize}
+    \pause
+    \item The packs are lowered into instructions using {\bfseries loop transforms}, {\bfseries scheduling}, and {\bfseries instruction selection}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Vector Packing}
+  \framesubtitle{Example}
+
+  \begin{figure}
+    \centering
+    \begin{minipage}{0.45\textwidth}
+      \begin{lstlisting}[language=C]
+void search(int haystack[], int needles[2], int needle_idxs[2], int n) {
+  for (int j = 0; j < n; j++)
+    if (haystack[j] != needles[0]) {
+      needle_idxs[0] = j;
+      break;
+    }
+  for (int j = 0; j < n; j++)
+    if (haystack[j] != needles[1]) {
+      needle_idxs[1] = j;
+      break;
+    }
+}
+      \end{lstlisting}
+    \end{minipage}
+    \hspace{0.2cm}
+    \pause
+    \begin{onlyenv}<1-2>
+      \begin{minipage}{0.45\textwidth}
+        \begin{lstlisting}
+with i = mu(0, i') do
+  t = load haystack[i]      : true
+  needle = load needles[0]  : true
+  found = cmp eq, t, needle : true
+  i' = add i, 1             : true
+  not_found = not found     : true
+  lt_n = cmp lt i', n       : true
+while not_found and lt_n    : true
+store i, needle_idxs[0]     : found
+with i2 = mu(0, i2') do
+  t2 = load haystack[i2]       : true
+  needle2 = load needles[1]    : true
+  found2 = cmp eq, t2, needle2 : true
+  i2' = add i2, 1              : true
+  not_found2 = not found2      : true
+  lt_n2 = cmp lt i2', n        : true
+while not_found2 and lt_n2     : true
+store i2, needle_idxs[1]       : found2
+        \end{lstlisting}
+      \end{minipage}
+    \end{onlyenv}%
+    \begin{onlyenv}<3>
+      \begin{minipage}{0.45\textwidth}
+        \begin{lstlisting}
+(*@with i = mu(0, i') do@*)
+(*@  t = load haystack[i]      : true@*)
+(*@  needle = load needles[0]  : true@*)
+(*@  found = cmp eq, t, needle : true@*)
+(*@  i' = add i, 1             : true@*)
+(*@  not_found = not found     : true@*)
+(*@  lt_n = cmp lt i', n       : true@*)
+(*@while not_found and lt_n    : true@*)
+(|@store i, needle_idxs[0]     : found@|)
+(*@with i2 = mu(0, i2') do@*)
+(*@  t2 = load haystack[i2]       : true@*)
+(*@  needle2 = load needles[1]    : true@*)
+(*@  found2 = cmp eq, t2, needle2 : true@*)
+(*@  i2' = add i2, 1              : true@*)
+(*@  not_found2 = not found2      : true@*)
+(*@  lt_n2 = cmp lt i2', n        : true@*)
+(*@while not_found2 and lt_n2     : true@*)
+(|@store i2, needle_idxs[1]       : found2@|)
+        \end{lstlisting}
+      \end{minipage}
+    \end{onlyenv}%
+    \begin{onlyenv}<4>
+      \begin{minipage}{0.45\textwidth}
+        \begin{lstlisting}
+(*@with@*) i = mu(0, i') (*@do@*)
+(*@  t = load haystack[i]      : true@*)
+(*@  needle = load needles[0]  : true@*)
+(*@  found = cmp eq, t, needle : true@*)
+(*@  i' = add i, 1             : true@*)
+(*@  not_found = not found     : true@*)
+(*@  lt_n = cmp lt i', n       : true@*)
+(*@while not_found and lt_n    : true@*)
+(|@store i, needle_idxs[0]     : found@|)
+(*@with@*) i2 = mu(0, i2') (*@do@*)
+(*@  t2 = load haystack[i2]       : true@*)
+(*@  needle2 = load needles[1]    : true@*)
+(*@  found2 = cmp eq, t2, needle2 : true@*)
+(*@  i2' = add i2, 1              : true@*)
+(*@  not_found2 = not found2      : true@*)
+(*@  lt_n2 = cmp lt i2', n        : true@*)
+(*@while not_found2 and lt_n2     : true@*)
+(|@store i2, needle_idxs[1]       : found2@|)
+        \end{lstlisting}
+      \end{minipage}
+    \end{onlyenv}%
+    \begin{onlyenv}<5>
+      \begin{minipage}{0.45\textwidth}
+        \begin{lstlisting}
+(*@with@*) i = mu(0, i') (*@do@*)
+(*@  t = load haystack[i]      : true@*)
+(*@  needle = load needles[0]  : true@*)
+(*@  found = cmp eq, t, needle : true@*)
+  i' = add i, 1             : true
+(*@  not_found = not found     : true@*)
+(*@  lt_n = cmp lt i', n       : true@*)
+(*@while not_found and lt_n    : true@*)
+(|@store i, needle_idxs[0]     : found@|)
+(*@with@*) i2 = mu(0, i2') (*@do@*)
+(*@  t2 = load haystack[i2]       : true@*)
+(*@  needle2 = load needles[1]    : true@*)
+(*@  found2 = cmp eq, t2, needle2 : true@*)
+  i2' = add i2, 1              : true
+(*@  not_found2 = not found2      : true@*)
+(*@  lt_n2 = cmp lt i2', n        : true@*)
+(*@while not_found2 and lt_n2     : true@*)
+(|@store i2, needle_idxs[1]       : found2@|)
+        \end{lstlisting}
+      \end{minipage}
+    \end{onlyenv}%
+    \begin{onlyenv}<6>
+      \begin{minipage}{0.45\textwidth}
+        \begin{lstlisting}
+(*@with@*) i = mu(0, i') (*@do@*)
+(*@  t = load haystack[i]      : true@*)
+(*@  needle = load needles[0]  : true@*)
+(*@  found = cmp eq, t, needle : true@*)
+  i' = add i, 1             : true
+(*@  not_found = not found     : true@*)
+  lt_n = cmp lt i', n       : true
+(*@while not_found and lt_n    : true@*)
+(|@store i, needle_idxs[0]     : found@|)
+(*@with@*) i2 = mu(0, i2') (*@do@*)
+(*@  t2 = load haystack[i2]       : true@*)
+(*@  needle2 = load needles[1]    : true@*)
+(*@  found2 = cmp eq, t2, needle2 : true@*)
+  i2' = add i2, 1              : true
+(*@  not_found2 = not found2      : true@*)
+  lt_n2 = cmp lt i2', n        : true
+(*@while not_found2 and lt_n2     : true@*)
+(|@store i2, needle_idxs[1]       : found2@|)
+        \end{lstlisting}
+      \end{minipage}
+    \end{onlyenv}%
+  \end{figure}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Lowering Packs into Instructions}
+  \framesubtitle{Loop transforms: fusion and co-iteration}
+
+  \begin{itemize}
+    \item Predicate SSA allows packing from different loops
+    \begin{itemize}
+      \item However, the resulting vector instructions must be in the same loop
+    \end{itemize}
+    \pause
+    \item Two ways of loop transformation: {\bfseries fusion} and {\bfseries co-iteration}
+    \begin{itemize}
+      \item Apply fusion if loops are independent, have the same trip-count/condition, and parent loops can be fused
+      \item Co-iterate loops if they do not meet the conditions of fusion
+    \end{itemize}
+    \pause
+    \item Co-iteration: run the loop until all conditions of the original loops become false
+    \begin{itemize}
+      \item Guard the loop bodies' execution using strengthened control predicates
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Lowering Packs into Instructions}
+  \framesubtitle{Scheduling and instruction selection}
+
+  \begin{itemize}
+    \item {\bfseries Scheduling}: reorder instructions to satisfy dependences introduced by packing
+    \begin{itemize}
+      \item Create a dependency graph of instructions and loops
+      \item Since cyclic dependences have been checked before packing, the graph is DAG
+      \item Topological sort on the dependency graph to obtain dependency-preserving order
+    \end{itemize}
+    \pause
+    \item Special handling for load/store and \(\phi\)-node packs in {\bfseries instruction selection}
+    \begin{itemize}
+      \item For other instructions, naive packing into vector registers is fine
+      \item Use masked loads and stores where masks are set according to control predicates
+      \item When lowering \(\phi\)-nodes, emit \texttt{select} instructions if necessary
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\subsection{Converting Back to CFG}
+\begin{frame}
+  \frametitle{Converting Back to CFG}
+
+  \begin{itemize}
+    \item After lowering the packs, the work on Predicated SSA is done
+    \pause
+    \item Features specific to Predicated SSA are lowered into CFG constructs
+    \begin{enumerate}
+      \item Replace gated \(\phi\)-nodes with move instructions, ignoring SSA invariant for now
+      \item Reconstruct basic blocks by querying {\bfseries block builder} with control predicates
+      \item Generate back edges and loop exits
+    \end{enumerate}
+    \pause
+    \item Block builder: a data structure for mapping control predicates into basic blocks
+    \begin{itemize}
+      \item When presented with control predicate \(p\), the following cases are possible:
+    \end{itemize}
+  \end{itemize}
+
+  \begin{table}[]
+  \begin{tabular}{|r|l|}
+  \hline
+  \(p\) & Block builder behavior \\ \hline
+  \(\mathbf{true}\) & return top-level block \\
+  \(p' \land c\) & add branch with condition \(c\) to \(p'\) block \\
+  \(p_1 \lor \dots \lor p_n\) & join control-flow from \(p_1, \dots, p_n\) blocks \\ \hline
+  \end{tabular}
+  \end{table}
+\end{frame}
+
+\subsection{Performance Evaluation}
+\begin{frame}
+  \frametitle{Performance Evaluation}
+
+  \begin{itemize}
+    \item SuperVectorization outperformed LLVM's default \texttt{-O3} pipeline
+    \begin{itemize}
+      \item \({}^*\)Manually vectorized some functions
+    \end{itemize}
+  \end{itemize}
+  \begin{figure}
+  \centering
+  \begin{tabular}{|r|ccc|}
+  \hline
+  Benchmark & TSVC & PolyBench & ISPC\({}^*\) \\ \hline
+  Geomean speedup & \(1.04\times\) & \(1.46\times\) & \(1.88\times\) \\ \hline
+  \end{tabular}
+  \end{figure}
+  \pause
+  \begin{itemize}
+    \item In some cases, performance regressed significantly (\(<0.2\times\))
+    \begin{itemize}
+      \item Missed vectorization opportunity due to data dependences
+      \item Sub-optimal instruction selection (e.g., scalarized store instead of scatter)
+      \item Incomplete handling of some reduction patterns
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\section{Takeaways}
+\begin{frame}
+  \frametitle{Takeaways}
+
+  \begin{itemize}
+    \item Dedicated representation facilitating code motion
+    \begin{itemize}
+      \item Thinking outside of CFG and basic blocks might reveal new opportunities
+    \end{itemize}
+    \pause
+    \item Flexibility of SLP
+    \begin{itemize}
+      \item Exploiting SLP spanning multiple control flow regions had led to speedups
+    \end{itemize}
+    \pause
+    \item Future directions
+    \begin{itemize}
+      \item Reduce dependence on loop unrolling for scalable vectorization support
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+\end{document}
